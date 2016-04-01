@@ -1,0 +1,57 @@
+---
+title: "Machine Learning Project Assignment"
+author: "Jawad Mroueh"
+date: "April 1, 2016"
+output: html_document
+---
+## Project goal and strategy
+Analyze human activity data of weight lifting to determine if activity was performed correctly. First the data is cleaned up by removing columns with too many NA's. There appear to be summary columns of specified time windows. Since the test data sets are actual raw data instead of summary columns, it doesn't make sense to keep the summary columns in our prediction algorithm. After data cleaning, the training dataset is split to perform cross validation, then the best model is selected to predict the 20 test cases for movement classification.
+
+## Data Loading Preprocessing
+Required packages are loaded, the data is loaded, NA and divide by 0 removed. The column sets are truncated to significant columns for analysis.
+```{r, echo=TRUE}
+library(ElemStatLearn)
+library(caret)
+library(rpart) 
+library(randomForest)
+
+file_training <- read.csv("./pml-training.csv",na.strings = c("NA","#DIV/0!",""))
+file_testing <- read.csv("./pml-testing.csv",na.strings = c("NA","#DIV/0!",""))
+
+# Cleaning up NA columns
+NAcolIndex <- which(colSums(is.na(file_training))>10000)
+training = file_training[, -c(1:7,NAcolIndex)]
+testing = file_testing[, -c(1:7,NAcolIndex)]
+
+```
+## Data Partitioning and model fits
+The training dataset is partitioned to perform cross validation and compare classificaiton tree model versus linear discriminant analysis model versus random forest model. The confusion matrix is plotted for each and accuracy is compared.
+```{r, echo=TRUE}
+set.seed(4354)
+inTrain <- createDataPartition(y = training$classe, p=0.6, list=FALSE)
+training_sub <- training[inTrain, ]
+testing_sub <- training[-inTrain, ]
+
+mdlFit1 <- rpart(classe ~ ., data=training_sub, method="class")
+resultFit1 <- predict(mdlFit1, testing_sub, type = "class")
+confusionMatrix(resultFit1, testing_sub$classe)
+
+mdlFit2 <- train(classe ~ ., data=training_sub, method="lda")
+resultFit2 <- predict(mdlFit2,testing_sub)
+confusionMatrix(resultFit2, testing_sub$classe)
+
+mdlFit3 <- randomForest(classe ~ ., data=training_sub)
+resultFit3 <- predict(mdlFit3,testing_sub, type = "class")
+confusionMatrix(resultFit3, testing_sub$classe)
+```
+## Predicting test cases
+Random Forest model shows to be the best in terms of accuracy. It is selected to predict on the 20 test cases.
+```{r, echo=TRUE}
+testingFit3 <- predict(mdlFit3,testing, type = "class")
+testingFit3
+
+```
+
+## Data Source
+The data for this project come from the source listed below, More information can be found how the study was conducted here:
+http://groupware.les.inf.puc-rio.br/har
